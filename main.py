@@ -21,7 +21,7 @@ class ScaleFrame(Frame):
         self.label = Label(self, text=label)
         self.label.pack(side="left", anchor="s")
 
-        self.scaleR = Scale(
+        self.scale = Scale(
             self,
             from_=self.from_,
             to=self.to,
@@ -29,10 +29,15 @@ class ScaleFrame(Frame):
             length=333,
             variable=self.var,
         )
-        self.scaleR.pack(side="left", anchor="s")
+        self.scale.pack(side="left", anchor="s")
 
-        self.entryR = Entry(self, width=5, textvariable=self.var)
-        self.entryR.pack(side="left", anchor="s")
+        self.entry = Entry(self, width=5, textvariable=self.var)
+        self.entry.pack(side="left", anchor="s")
+
+        self.scale.bind("<Button-4>", self.up)
+        self.entry.bind("<Button-4>", self.up)
+        self.scale.bind("<Button-5>", self.down)
+        self.entry.bind("<Button-5>", self.down)
 
     @property
     def value(self):
@@ -41,6 +46,14 @@ class ScaleFrame(Frame):
     @value.setter
     def value(self, new):
         self.var.set(new)
+
+    def up(self, event=None):
+        if self.value < self.to:
+            self.value += 1
+
+    def down(self, event=None):
+        if self.value > self.from_:
+            self.value -= 1
 
 
 class Application(tk.Tk):
