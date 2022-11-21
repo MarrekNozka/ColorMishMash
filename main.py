@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env pypy3
 
 # from os.path import basename, splitext
 import tkinter as tk
@@ -32,7 +32,7 @@ class ScaleFrame(Frame):
 
         self.entry = Entry(self, width=5, textvariable=self.var)
 
-        self.canvas = Canvas(self, width=300, height=12)
+        self.canvas = Canvas(self, width=300, height=20)
 
         self.scale.bind("<Button-4>", self.up)
         self.entry.bind("<Button-4>", self.up)
@@ -104,9 +104,9 @@ class Application(tk.Tk):
         self.frameG.pack()
         self.frameB.pack()
         self.grayBtn.pack(anchor="w")
-        self.frameH.pack()
-        self.frameS.pack()
-        self.frameV.pack()
+        self.frameH.pack(pady=7)
+        self.frameS.pack(pady=7)
+        self.frameV.pack(pady=7)
         self.canvasMain.pack()
         self.btnQuit.pack()
 
@@ -120,7 +120,57 @@ class Application(tk.Tk):
             r, g, b = int(r * 255), int(g * 255), int(b * 255)
             color = "#{:02X}{:02X}{:02X}".format(r, g, b)
             # print(color)
-            c.create_line(i, 0, i, 12, fill=color)
+            # c.create_rectangle(i * 2, 0, i * 2 + 2, 20, fill=color, width=0)
+            c.create_line(i, 0, i, 20, fill=color)
+
+    def updateGradientS(self):
+        c = self.frameS.canvas
+        c.delete("all")
+        for i in range(301):
+            r, g, b = hsv_to_rgb(
+                self.frameH.value / 359, i / 300, self.frameV.value / 100
+            )
+            r, g, b = int(r * 255), int(g * 255), int(b * 255)
+            color = "#{:02X}{:02X}{:02X}".format(r, g, b)
+            c.create_line(i, 0, i, 20, fill=color)
+
+    def updateGradientV(self):
+        c = self.frameV.canvas
+        c.delete("all")
+        for i in range(301):
+            r, g, b = hsv_to_rgb(
+                self.frameH.value / 359, self.frameS.value / 100, i / 300
+            )
+            r, g, b = int(r * 255), int(g * 255), int(b * 255)
+            color = "#{:02X}{:02X}{:02X}".format(r, g, b)
+            c.create_line(i, 0, i, 20, fill=color)
+
+    def updateGradientR(self):
+        c = self.frameR.canvas
+        c.delete("all")
+        for i in range(301):
+            color = "#{:02X}{:02X}{:02X}".format(
+                int(i * 255 / 300), self.frameG.value, self.frameB.value
+            )
+            c.create_line(i, 0, i, 20, fill=color)
+
+    def updateGradientG(self):
+        c = self.frameG.canvas
+        c.delete("all")
+        for i in range(301):
+            color = "#{:02X}{:02X}{:02X}".format(
+                self.frameR.value, int(i * 255 / 300), self.frameB.value
+            )
+            c.create_line(i, 0, i, 20, fill=color)
+
+    def updateGradientB(self):
+        c = self.frameB.canvas
+        c.delete("all")
+        for i in range(301):
+            color = "#{:02X}{:02X}{:02X}".format(
+                self.frameR.value, self.frameG.value, int(i * 255 / 300)
+            )
+            c.create_line(i, 0, i, 20, fill=color)
 
     def colormake(self, varname, index, mode, var):
         # print(varname, index, mode)
@@ -167,6 +217,11 @@ class Application(tk.Tk):
 
         self.canvasMain.config(bg=self.color)
         self.updateGradientH()
+        self.updateGradientS()
+        self.updateGradientV()
+        self.updateGradientR()
+        self.updateGradientG()
+        self.updateGradientB()
 
         self.frameR.var.trace("w", partial(self.colormake, var=self.frameR.var))
         self.frameG.var.trace("w", partial(self.colormake, var=self.frameG.var))
