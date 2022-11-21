@@ -19,25 +19,30 @@ class ScaleFrame(Frame):
         self.var = tk.IntVar(self, 0, "var{}".format(label))
 
         self.label = Label(self, text=label)
-        self.label.pack(side="left", anchor="s")
 
         self.scale = Scale(
             self,
             from_=self.from_,
             to=self.to,
+            showvalue=0,
             orient="horizontal",
-            length=333,
+            length=330,
             variable=self.var,
         )
-        self.scale.pack(side="left", anchor="s")
 
         self.entry = Entry(self, width=5, textvariable=self.var)
-        self.entry.pack(side="left", anchor="s")
+
+        self.canvas = Canvas(self, width=300, height=12)
 
         self.scale.bind("<Button-4>", self.up)
         self.entry.bind("<Button-4>", self.up)
         self.scale.bind("<Button-5>", self.down)
         self.entry.bind("<Button-5>", self.down)
+
+        self.label.grid(row="1", column=0, sticky="s")
+        self.scale.grid(row="1", column=1, sticky="s")
+        self.entry.grid(row="1", column=2, sticky="s")
+        self.canvas.grid(row="0", column=1, sticky="n")
 
     @property
     def value(self):
@@ -105,6 +110,18 @@ class Application(tk.Tk):
         self.canvasMain.pack()
         self.btnQuit.pack()
 
+    def updateGradientH(self):
+        c = self.frameH.canvas
+        c.delete("all")
+        for i in range(301):
+            r, g, b = hsv_to_rgb(
+                i / 300, self.frameS.value / 100, self.frameV.value / 100
+            )
+            r, g, b = int(r * 255), int(g * 255), int(b * 255)
+            color = "#{:02X}{:02X}{:02X}".format(r, g, b)
+            # print(color)
+            c.create_line(i, 0, i, 12, fill=color)
+
     def colormake(self, varname, index, mode, var):
         # print(varname, index, mode)
 
@@ -149,6 +166,7 @@ class Application(tk.Tk):
         self.color = "#{:02X}{:02X}{:02X}".format(r, g, b)
 
         self.canvasMain.config(bg=self.color)
+        self.updateGradientH()
 
         self.frameR.var.trace("w", partial(self.colormake, var=self.frameR.var))
         self.frameG.var.trace("w", partial(self.colormake, var=self.frameG.var))
