@@ -39,9 +39,12 @@ class ScaleFrame(Frame):
         self.entry.bind("<Button-4>", self.up)
         self.scale.bind("<Button-5>", self.down)
         self.entry.bind("<Button-5>", self.down)
+        self.scale.bind("<MouseWheel>", self.wheel)
+        self.entry.bind("<MouseWheel>", self.wheel)
         self.canvas.bind("<Button-1>", self.canvasClickHandler)
         self.canvas.bind("<Button-4>", self.canvasUpHandler)
         self.canvas.bind("<Button-5>", self.canvasDownHandler)
+        self.canvas.bind("<MouseWheel>", self.canvasWheelHandler)
 
         self.label.grid(row="1", column=0, sticky="s")
         self.canvas.grid(row="1", column=1, sticky="n")
@@ -64,6 +67,15 @@ class ScaleFrame(Frame):
         if self.value > self.from_:
             self.value -= 1
 
+    def wheel(self, e: tk.Event):
+        delta = e.delta // 120
+        if delta > 0:
+            f = self.up
+        else:
+            f = self.down
+        for _ in range(abs(delta)):
+            f(e)
+
     def canvasClickHandler(self, e: tk.Event):
         w = e.widget.winfo_width()
         x = e.x
@@ -80,6 +92,15 @@ class ScaleFrame(Frame):
             self.value = 0
         else:
             self.value -= self.step
+
+    def canvasWheelHandler(self, e: tk.Event):
+        delta = e.delta // 120
+        if delta > 0:
+            f = self.canvasUpHandler
+        else:
+            f = self.canvasDownHandler
+        for _ in range(abs(delta)):
+            f(e)
 
 
 class Application(tk.Tk):
@@ -171,7 +192,7 @@ class Application(tk.Tk):
         self.canvasMem = []
         for row in range(3):
             for column in range(8):
-                canvas = Canvas(self.frameMem, width=48, height=48, bg="#ef12ab")
+                canvas = Canvas(self.frameMem, width=48, height=48, bg="#999999")
                 canvas.grid(row=row, column=column)
                 self.canvasMem.append(canvas)
                 canvas.bind("<Button-1>", self.clickHandler)
