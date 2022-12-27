@@ -236,11 +236,10 @@ class Application(tk.Tk):
 
         self.frameMem.pack()
 
-        # start value
-        self.frameR.value = 0
-        self.frameG.value = 0
-        self.frameB.value = 0
-        self.comboSave.current(0)
+        # Load
+        if len(self.savelist):
+            self.comboSave.current(0)
+            self.load()
 
     def clickHandler(self, event):
         if self.cget("cursor") != "pencil":  # kliknu poprve
