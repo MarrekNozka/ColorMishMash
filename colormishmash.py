@@ -3,8 +3,9 @@ import tkinter as tk
 from tkinter import Label, Button, Scale, Entry, Frame, Canvas, Checkbutton
 from colorsys import rgb_to_hsv, hsv_to_rgb
 from functools import partial
-
 from tkinter import ttk
+from pathlib import Path
+from os import listdir
 
 
 class ScaleFrame(Frame):
@@ -88,13 +89,26 @@ class Application(tk.Tk):
         super().__init__(className=self.name)
         self.title(self.name)
 
+        c = Path("~/.config").expanduser()
+        if not c.exists():
+            c.mkdir()
+        self.confdir = Path("~/.config/colormishmash").expanduser()
+        if not self.confdir.exists():
+            self.confdir.mkdir()
+        self.savelist = sorted(listdir(self.confdir))
+
         self.bind("<Escape>", self.clickEscape)
         self.resizable(False, False)
 
         self.lblMain = Label(self, text="ColorMishMash", font="16")
 
         self.frameSave = Frame(self)
-        self.comboSave = ttk.Combobox(self.frameSave, values=("a", "b"))
+        self.varSave = tk.StringVar(self, "", "varSave")
+        # self.varSave.trace("w", self.load)
+        self.comboSave = ttk.Combobox(
+            self.frameSave, values=self.savelist, textvariable=self.varSave
+        )
+        self.comboSave.bind("<<ComboboxSelected>>", self.load)
         self.btnSave = Button(self.frameSave, text="Save", command=self.save)
         self.btnQuit = Button(self.frameSave, text="Quit", command=self.quit)
 
@@ -226,6 +240,7 @@ class Application(tk.Tk):
         self.frameR.value = 0
         self.frameG.value = 0
         self.frameB.value = 0
+        self.comboSave.current(0)
 
     def clickHandler(self, event):
         if self.cget("cursor") != "pencil":  # kliknu poprve
@@ -239,6 +254,10 @@ class Application(tk.Tk):
                 self.frameB.value = int(self.touchcolor[5:], 16)
             else:
                 event.widget.config(bg=self.touchcolor)
+            if event.widget is self.canvas5:
+                self.canvas1.itemconfig(self.text1, fill=self.touchcolor)
+            if event.widget is self.canvas4:
+                self.canvas5.itemconfig(self.text2, fill=self.touchcolor)
 
     def clickEscape(self, event: tk.Event):
         self.config(cursor="")
@@ -421,7 +440,41 @@ class Application(tk.Tk):
             self.frameG.value = int(css[5:], 16)
 
     def save(self):
-        pass
+        filename = self.varSave.get()
+        checkname = ""
+        for c in filename:
+            if c.upper() in "-_1234567890QWERTYUIOPASDFGHJKLZXCVBNM":
+                checkname += c
+        p = Path(f"~/.config/colormishmash/{checkname}").expanduser()
+        with p.open("w") as f:
+            f.write(self.canvas1.cget("bg") + "\n")
+            f.write(self.canvas2.cget("bg") + "\n")
+            f.write(self.canvas3.cget("bg") + "\n")
+            f.write(self.canvas4.cget("bg") + "\n")
+            f.write(self.canvas5.cget("bg") + "\n")
+            for canvas in self.canvasMem:
+                f.write(canvas.cget("bg") + "\n")
+        choice = self.varSave.get()
+        self.savelist = sorted(listdir(self.confdir))
+        self.comboSave.config(values=self.savelist)
+        self.varSave.set(choice)
+
+    # def load(self, varname, index, mode):
+    def load(self, event: tk.Event = None):
+        filename = self.varSave.get()
+        conffile = Path(f"~/.config/colormishmash/{filename}").expanduser()
+        if conffile.is_file():
+            with conffile.open("r") as f:
+                self.canvas1.config(bg=f.readline().strip())
+                self.canvas2.config(bg=f.readline().strip())
+                self.canvas3.config(bg=f.readline().strip())
+                self.canvas4.config(bg=f.readline().strip())
+                self.canvas5.config(bg=f.readline().strip())
+                for canvas in self.canvasMem:
+                    canvas.config(bg=f.readline().strip())
+            self.CSStoRGB(self.canvasMain)
+            self.canvas1.itemconfig(self.text1, fill=self.canvas5.cget("bg"))
+            self.canvas5.itemconfig(self.text2, fill=self.canvas4.cget("bg"))
 
     def quit(self, event=None):
         super().quit()
