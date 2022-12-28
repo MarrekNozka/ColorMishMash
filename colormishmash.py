@@ -91,17 +91,9 @@ class ScaleFrame(Frame):
 
     @value.setter
     def value(self, new):
-        # traceinfo = self.varProc.trace_info()
-        # self.varProc.trace_remove(traceinfo[0][0], traceinfo[0][1])
-        # traceinfo = self.varNum.trace_info()
-        # self.varNum.trace_remove(traceinfo[0][0], traceinfo[0][1])
-
         self.var.set(new)
         self.varProc.set("{:.0f}%".format(new * 100 / self.to))
         self.varNum.set(new)
-
-        # self.varNum.trace("w", self.bindFromNum)
-        # self.varProc.trace("w", self.bindFromProc)
 
     def up(self, event=None):
         if self.value < self.to:
@@ -145,30 +137,6 @@ class ScaleFrame(Frame):
             f = self.canvasDownHandler
         for _ in range(abs(delta)):
             f(e)
-
-    def validate(self, before, after):
-        # print("b:", before, "a:", after)
-        try:
-            after = int(after)
-            if after >= 0 and after <= 255:
-                return True
-        except ValueError:
-            return False
-        return False
-
-    def on_invalid(self, before, after):
-        if len(after) == 0:
-            self.var.set(0)
-        # print("konec")
-        # try:
-        #     after = int(after)
-        #     if after < 0:
-        #         self.value = 0
-        #     if after > 255:
-        #         self.value = 255
-        # except ValueError:
-        #     return False
-        # return False
 
 
 class MyEntry(Entry):
