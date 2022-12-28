@@ -1,11 +1,12 @@
 # from os.path import basename, splitext
 import tkinter as tk
 from tkinter import Label, Button, Scale, Entry, Frame, Canvas, Checkbutton
+from tkinter.messagebox import askyesno
 from colorsys import rgb_to_hsv, hsv_to_rgb
 from functools import partial
 from tkinter import ttk
 from pathlib import Path
-from os import listdir
+from os import listdir, remove
 import distutils.spawn
 import subprocess
 
@@ -195,6 +196,7 @@ class Application(tk.Tk):
         )
         self.comboSave.bind("<<ComboboxSelected>>", self.load)
         self.btnSave = Button(self.frameSave, text="💾 Save", command=self.save)
+        self.btnDel = Button(self.frameSave, text="🗑", command=self.delete)
         self.btnQuit = Button(self.frameSave, text="Quit", command=self.quit)
 
         self.frameR = ScaleFrame(self, label="R")
@@ -306,6 +308,7 @@ class Application(tk.Tk):
         self.frameSave.pack(fill="x")
         self.comboSave.pack(side="left", padx=3)
         self.btnSave.pack(side="left")
+        self.btnDel.pack(side="left")
         self.btnQuit.pack(side="right", padx=3)
 
         self.frameR.pack(ipady=4)
@@ -345,6 +348,28 @@ class Application(tk.Tk):
             self.frameR.value = 0
             self.frameG.value = 0
             self.frameB.value = 0
+
+    def taborder(self):
+        # TAB order
+        widgets = (
+            self.comboSave,
+            self.btnSave,
+            self.frameR.entryProc,
+            self.frameG.entryProc,
+            self.frameB.entryProc,
+            self.frameH.entryProc,
+            self.frameS.entryProc,
+            self.frameV.entryProc,
+            self.frameR.entryNum,
+            self.frameG.entryNum,
+            self.frameB.entryNum,
+            self.frameH.entryNum,
+            self.frameS.entryNum,
+            self.frameV.entryNum,
+            self.btnQuit,
+        )
+        for w in widgets:
+            w.lift()
 
     def clickHandler(self, event):
         if self.cget("cursor") != "pencil":  # kliknu poprve
@@ -571,7 +596,18 @@ class Application(tk.Tk):
         self.comboSave.config(values=self.savelist)
         self.varSave.set(choice)
 
-    # def load(self, varname, index, mode):
+    def delete(self):
+        filename = self.varSave.get()
+        p = Path(f"~/.config/colormishmash/{filename}").expanduser()
+        if p.is_file() and askyesno(
+            "Really?", 'Really remove "{}" configuration.'.format(filename)
+        ):
+            remove(p)
+
+        self.savelist = sorted(listdir(self.confdir))
+        self.comboSave.config(values=self.savelist)
+        self.varSave.set("")
+
     def load(self, event: tk.Event = None):
         filename = self.varSave.get()
         conffile = Path(f"~/.config/colormishmash/{filename}").expanduser()
