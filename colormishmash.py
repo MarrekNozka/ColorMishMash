@@ -6,6 +6,8 @@ from functools import partial
 from tkinter import ttk
 from pathlib import Path
 from os import listdir
+import distutils.spawn
+import subprocess
 
 
 class ScaleFrame(Frame):
@@ -17,6 +19,9 @@ class ScaleFrame(Frame):
         super().__init__(master, borderwidth=2, relief="raised")
 
         self.var = tk.IntVar(self, 0, "var{}".format(label))
+        self.var.trace("w", self.bindFromScale)
+        self.varProc = tk.StringVar(self, "0")
+        self.varNum = tk.StringVar(self, "0")
 
         self.label = Label(self, text=label)
 
@@ -31,16 +36,21 @@ class ScaleFrame(Frame):
             variable=self.var,
         )
 
-        self.entry = Entry(self, width=5, textvariable=self.var)
+        self.entryProc = Entry(self, width=5, textvariable=self.varProc)
+        self.entryProc.bind("<Return>", self.bindFromProc)
+        self.entryProc.bind("<KP_Enter>", self.bindFromProc)
+        self.entryNum = Entry(self, width=5, textvariable=self.varNum)
+        self.entryNum.bind("<Return>", self.bindFromNum)
+        self.entryNum.bind("<KP_Enter>", self.bindFromNum)
 
         self.canvas = Canvas(self, width=300, height=20)
 
         self.scale.bind("<Button-4>", self.up)
-        self.entry.bind("<Button-4>", self.up)
+        self.entryNum.bind("<Button-4>", self.up)
         self.scale.bind("<Button-5>", self.down)
-        self.entry.bind("<Button-5>", self.down)
+        self.entryNum.bind("<Button-5>", self.down)
         self.scale.bind("<MouseWheel>", self.wheel)
-        self.entry.bind("<MouseWheel>", self.wheel)
+        self.entryNum.bind("<MouseWheel>", self.wheel)
         self.canvas.bind("<Button-1>", self.canvasClickHandler)
         self.canvas.bind("<Button-4>", self.canvasUpHandler)
         self.canvas.bind("<Button-5>", self.canvasDownHandler)
@@ -48,8 +58,32 @@ class ScaleFrame(Frame):
 
         self.label.grid(row="1", column=0, sticky="s")
         self.canvas.grid(row="1", column=1, sticky="n")
-        self.entry.grid(row="1", column=2, sticky="s")
+        self.entryProc.grid(row="0", column=2, sticky="s")
+        self.entryNum.grid(row="1", column=2, sticky="s")
         self.scale.grid(row="0", column=1, sticky="s")
+
+    def bindFromScale(self, varname, index, mode):
+        self.varProc.set("{:.0f}%".format(self.var.get() * 100 / self.to))
+        self.varNum.set("{:d}".format(self.var.get()))
+
+    def bindFromProc(self, even: tk.Event):
+        text = self.varProc.get()
+        text = text[:-1] if text[-1] == "%" else text
+        try:
+            number = float(text)
+            if number >= 0 and number <= 100:
+                self.value = round(number * self.to / 100, 0)
+        except ValueError:
+            pass
+
+    def bindFromNum(self, event: tk.Event):
+        text = self.varNum.get()
+        try:
+            number = int(text, 10)
+            if number >= self.from_ and number <= self.to:
+                self.value = number
+        except ValueError:
+            pass
 
     @property
     def value(self):
@@ -57,7 +91,17 @@ class ScaleFrame(Frame):
 
     @value.setter
     def value(self, new):
+        # traceinfo = self.varProc.trace_info()
+        # self.varProc.trace_remove(traceinfo[0][0], traceinfo[0][1])
+        # traceinfo = self.varNum.trace_info()
+        # self.varNum.trace_remove(traceinfo[0][0], traceinfo[0][1])
+
         self.var.set(new)
+        self.varProc.set("{:.0f}%".format(new * 100 / self.to))
+        self.varNum.set(new)
+
+        # self.varNum.trace("w", self.bindFromNum)
+        # self.varProc.trace("w", self.bindFromProc)
 
     def up(self, event=None):
         if self.value < self.to:
@@ -102,6 +146,58 @@ class ScaleFrame(Frame):
         for _ in range(abs(delta)):
             f(e)
 
+    def validate(self, before, after):
+        # print("b:", before, "a:", after)
+        try:
+            after = int(after)
+            if after >= 0 and after <= 255:
+                return True
+        except ValueError:
+            return False
+        return False
+
+    def on_invalid(self, before, after):
+        if len(after) == 0:
+            self.var.set(0)
+        # print("konec")
+        # try:
+        #     after = int(after)
+        #     if after < 0:
+        #         self.value = 0
+        #     if after > 255:
+        #         self.value = 255
+        # except ValueError:
+        #     return False
+        # return False
+
+
+class MyEntry(Entry):
+    def __init__(self, master=None, cnf={}, **kw):
+        super().__init__(master, cnf, **kw)
+        self.textvariable = tk.StringVar(self, "")
+        self.config(textvariable=self.textvariable)
+        self.bind("<Button-1>", self.copy)
+        self.bind("<Button-3>", self.copy)
+
+    @property
+    def value(self):
+        return self.textvariable.get()
+
+    @value.setter
+    def value(self, new):
+        self.textvariable.set(new)
+
+    def copy(self, e: tk.Event = None):
+        if distutils.spawn.find_executable("xclip"):
+            subprocess.run(["xclip", "-i"], input=self.value.encode("utf8"))
+        elif distutils.spawn.find_executable("xsel"):
+            subprocess.run(["xsel", "--input"], input=self.value.encode("utf8"))
+        elif distutils.spawn.find_executable("clip"):
+            subprocess.run(["clip"], input=self.value.encode("utf8"))
+        else:
+            self.clipboard_clear()
+            self.clipboard_append(self.value)
+
 
 class Application(tk.Tk):
     name = "ColorMishMash"
@@ -119,18 +215,18 @@ class Application(tk.Tk):
         self.savelist = sorted(listdir(self.confdir))
 
         self.bind("<Escape>", self.clickEscape)
+        self.bind("<Q>", self.quit)
         self.resizable(False, False)
 
         self.lblMain = Label(self, text="ColorMishMash", font="16")
 
         self.frameSave = Frame(self)
         self.varSave = tk.StringVar(self, "", "varSave")
-        # self.varSave.trace("w", self.load)
         self.comboSave = ttk.Combobox(
             self.frameSave, values=self.savelist, textvariable=self.varSave
         )
         self.comboSave.bind("<<ComboboxSelected>>", self.load)
-        self.btnSave = Button(self.frameSave, text="Save", command=self.save)
+        self.btnSave = Button(self.frameSave, text="💾 Save", command=self.save)
         self.btnQuit = Button(self.frameSave, text="Quit", command=self.quit)
 
         self.frameR = ScaleFrame(self, label="R")
@@ -188,6 +284,17 @@ class Application(tk.Tk):
             highlightthickness=0,
         )
 
+        self.frameCSS = Frame(self)
+        self.entryCSShex = MyEntry(
+            self.frameCSS, width=8, state="readonly", readonlybackground="white"
+        )
+        self.entryCSSrgb = MyEntry(
+            self.frameCSS, width=15, state="readonly", readonlybackground="white"
+        )
+        self.entryCSSrgb_ = MyEntry(
+            self.frameCSS, width=19, state="readonly", readonlybackground="white"
+        )
+
         self.frameMem = Frame(self)
         self.canvasMem = []
         for row in range(3):
@@ -240,6 +347,11 @@ class Application(tk.Tk):
         self.frameH.pack(ipady=4)
         self.frameS.pack(ipady=4)
         self.frameV.pack(ipady=4)
+
+        self.frameCSS.pack(fill="x", pady=4)
+        self.entryCSShex.pack(side="left", padx=4)
+        self.entryCSSrgb.pack(side="left", padx=4)
+        self.entryCSSrgb_.pack(side="left", padx=4)
 
         self.frameCanvas.pack()
         self.canvas1.place(x=0, y=0)
@@ -407,6 +519,7 @@ class Application(tk.Tk):
             r = self.frameR.value
             g = self.frameG.value
             b = self.frameB.value
+            # print(r, g, b)
 
             if self.varGray.get():
                 self.frameR.value = var.get()
@@ -429,6 +542,11 @@ class Application(tk.Tk):
             self.frameR.value, self.frameG.value, self.frameB.value = r, g, b
 
         self.color = "#{:02X}{:02X}{:02X}".format(r, g, b)
+        self.entryCSShex.value = self.color
+        self.entryCSSrgb.value = "rgb({},{},{})".format(r, g, b)
+        self.entryCSSrgb_.value = "rgb({:.0f}%,{:.0f}%,{:.0f}%)".format(
+            r * 100 / 255, g * 100 / 255, b * 100 / 255
+        )
 
         self.canvasMain.config(bg=self.color)
         if self.canvasMain is self.canvas5:
@@ -465,6 +583,8 @@ class Application(tk.Tk):
 
     def save(self):
         filename = self.varSave.get()
+        if len(filename) == 0:
+            return
         checkname = ""
         for c in filename:
             if c.upper() in "-_1234567890QWERTYUIOPASDFGHJKLZXCVBNM":
